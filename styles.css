@@ -1,0 +1,27 @@
+.asciimath-preview-block {
+  padding: 0.5em 0;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.asciimath-preview[title] {
+  cursor: text;
+}
+
+.asciimath-symbols-setting {
+  display: block;
+}
+
+.asciimath-symbols-setting .setting-item-info {
+  margin-bottom: 1em;
+}
+
+.asciimath-symbols-setting textarea {
+  width: 100%;
+  min-height: 10em;
+  font-family: var(--font-monospace);
+}
+
+.asciimath-symbols-error {
+  color: var(--text-error);
+}
