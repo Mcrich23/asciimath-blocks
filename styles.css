@@ -16,6 +16,18 @@
   margin-bottom: 1em;
 }
 
+.asciimath-symbols-setting .setting-item-control {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.asciimath-symbols-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+}
+
 .asciimath-symbols-setting textarea {
   width: 100%;
   min-height: 10em;

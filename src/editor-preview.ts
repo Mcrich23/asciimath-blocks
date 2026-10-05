@@ -17,15 +17,17 @@ class MathWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const element = document.createElement(this.display ? "div" : "span");
-    element.className = this.display ? "asciimath-preview asciimath-preview-block" : "asciimath-preview";
+    const element = createEl(this.display ? "div" : "span", {
+      cls: this.display ? "asciimath-preview asciimath-preview-block" : "asciimath-preview",
+    });
     element.appendChild(renderMath(this.source, this.display));
     void finishRenderMath().then(() => view.requestMeasure());
-    if (this.editAt !== null) {
+    const editAt = this.editAt;
+    if (editAt !== null) {
       element.title = "Click to edit math";
       element.addEventListener("mousedown", event => {
         event.preventDefault();
-        view.dispatch({ selection: { anchor: this.editAt! } });
+        view.dispatch({ selection: { anchor: editAt } });
         view.focus();
       });
     } else {

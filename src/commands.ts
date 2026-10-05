@@ -46,7 +46,7 @@ export function registerConversionCommands(plugin: Plugin, convert: typeof toLat
         if (!command.all) {
           const selections = editor.listSelections();
           if (selections.length !== 1) return false;
-          const selection = selections[0]!;
+          const selection = selections[0];
           const anchor = editor.posToOffset(selection.anchor);
           const head = editor.posToOffset(selection.head);
           ranges = ranges.filter(range => range.from <= Math.max(anchor, head)

@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting, type Plugin } from "obsidian";
+import { ButtonComponent, PluginSettingTab, Setting, type Plugin } from "obsidian";
 
 interface SymbolSettingsHost extends Plugin {
   customSymbols: string;
@@ -10,13 +10,29 @@ export class SymbolSettingsTab extends PluginSettingTab {
     super(host.app, host);
   }
 
+  // Obsidian 1.13+ indexes these definitions for settings search.
+  getSettingDefinitions() {
+    return [{
+      name: "Custom symbols",
+      desc: "One per line: name = LaTeX. Names are case-sensitive and use letters and numbers, starting with a letter. Use LaTeX without dollar signs.",
+      aliases: ["AsciiMath", "LaTeX", "symbol mappings"],
+      render: (setting: Setting) => this.renderSymbols(setting),
+    }];
+  }
+
+  // Older versions use the same definitions and renderer without the new API.
   display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
+    this.containerEl.empty();
+    for (const definition of this.getSettingDefinitions()) {
+      const setting = new Setting(this.containerEl)
+        .setName(definition.name)
+        .setDesc(definition.desc);
+      definition.render(setting);
+    }
+  }
+
+  private renderSymbols(setting: Setting): void {
     let draft = this.host.customSymbols;
-    const setting = new Setting(containerEl)
-      .setName("Custom symbols")
-      .setDesc("One per line: name = LaTeX. Names use letters and numbers, starting with a letter. Names are case-sensitive.");
     setting.settingEl.addClass("asciimath-symbols-setting");
     setting.addTextArea(text => {
       text.setPlaceholder("symbol = LaTeX")
@@ -25,11 +41,11 @@ export class SymbolSettingsTab extends PluginSettingTab {
       text.inputEl.setAttribute("aria-label", "Custom symbol mappings");
       text.inputEl.spellcheck = false;
     });
-    const status = containerEl.createEl("p", { cls: "asciimath-symbols-status" });
+    const actions = setting.controlEl.createDiv({ cls: "asciimath-symbols-actions" });
+    const status = actions.createEl("p", { cls: "asciimath-symbols-status" });
     status.setAttribute("aria-live", "polite");
-    new Setting(containerEl)
-      .setDesc("Use LaTeX without dollar signs. Save to update open notes.")
-      .addButton(button => button.setButtonText("Save symbols").setCta().onClick(async () => {
+    const button = new ButtonComponent(actions)
+      .setButtonText("Save symbols").setCta().onClick(async () => {
         button.setDisabled(true);
         status.removeClass("asciimath-symbols-error");
         try {
@@ -41,6 +57,6 @@ export class SymbolSettingsTab extends PluginSettingTab {
         } finally {
           button.setDisabled(false);
         }
-      }));
+      });
   }
 }
