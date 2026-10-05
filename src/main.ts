@@ -32,7 +32,7 @@ export default class AsciiMathBlocks extends Plugin {
       const runtime = (window as Window & { MathJax?: MathJaxRuntime }).MathJax;
       if (!runtime) throw new Error("MathJax did not load.");
 
-      const removeFilter = installAsciiMath(runtime, source => this.converter.toTex(source));
+      const removeFilter = installAsciiMath(runtime, (source, display) => this.converter.toTex(source, display));
       this.registerEditorExtension(mathPreviewExtension);
       this.register(() => {
         removeFilter();

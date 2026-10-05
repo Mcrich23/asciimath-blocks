@@ -35,6 +35,21 @@ the closing `$$`. Reading view always shows rendered math.
 Rendering does not modify notes or undo history. Other text in Source mode
 keeps its usual formatting.
 
+In an AsciiMath display block, leave an empty line between expressions to
+render them on separate rows:
+
+```text
+$$
+[(3,10),(6,-1)][(0),(1)]
+
+= [(10),(-1)]
+$$
+```
+
+Single line breaks are treated as spaces. Blank lines inside matrix brackets,
+grouping brackets, or text labels do not start a new row. Native LaTeX keeps
+its usual line-break syntax.
+
 ### AsciiMath examples
 
 | Expression | Meaning |

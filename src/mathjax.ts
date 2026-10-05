@@ -21,7 +21,7 @@ export interface MathJaxRuntime {
 }
 
 /** Install a reversible filter in Obsidian's existing renderer. */
-export function installAsciiMath(runtime: MathJaxRuntime, convert: (source: string) => string = toTex): () => void {
+export function installAsciiMath(runtime: MathJaxRuntime, convert: typeof toTex = toTex): () => void {
   const tex = runtime.startup?.document?.inputJax?.find(jax => jax.name === "TeX");
   if (!tex?.preFilters) {
     throw new Error("Obsidian's MathJax renderer is unavailable.");
@@ -29,7 +29,7 @@ export function installAsciiMath(runtime: MathJaxRuntime, convert: (source: stri
 
   const filter: MathFilter = ({ math }) => {
     try {
-      math.math = convert(math.math);
+      math.math = convert(math.math, math.display);
     } catch {
       // A malformed expression should affect only its own rendering.
       math.math = "\\text{Unable to render AsciiMath. Check this expression.}";

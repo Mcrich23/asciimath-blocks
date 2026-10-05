@@ -31,15 +31,49 @@ test("inline and display math are converted, and removing the filter restores th
   const remove = installAsciiMath(runtime);
   const display = { math: "sqrt(x)", display: true };
   const inline = { math: "1/2", display: false };
+  const multiline = { math: "sqrt(x)\n\nx^2", display: true };
   const latex = { math: String.raw`\frac{a}{b}`, display: true };
-  filters.forEach(filter => { filter({ math: display }); filter({ math: inline }); filter({ math: latex }); });
+  filters.forEach(filter => {
+    for (const math of [display, inline, multiline, latex]) filter({ math });
+  });
   assert.equal(display.math, "\\sqrt{x}");
   assert.equal(inline.math, "\\frac{1}{2}");
+  assert.equal(multiline.math, String.raw`\begin{gathered}\sqrt{x} \\ x^{2}\end{gathered}`);
   assert.equal(latex.math, String.raw`\frac{a}{b}`);
   assert.equal(display.display, true);
   assert.equal(inline.display, false);
   remove();
   assert.equal(filters.size, 0);
+});
+
+test("blank lines make display rows and survive conversion to native LaTeX", () => {
+  const rows = [
+    "[(3, 10), (6, -1)][(0), (1)]",
+    "= [(3(0) + 10(1)), (6(0) -1(1))]",
+    "= [(10), (-1)]",
+  ];
+  const expected = `\\begin{gathered}${rows.map(row => toTex(row)).join(" \\\\ ")}\\end{gathered}`;
+  for (const separator of ["\n\n", "\r\n \t\r\n\r\n"]) {
+    const source = `\n${rows.join(separator)}\n`;
+    assert.equal(toTex(source, true), expected);
+    const latex = toLatex(source, true);
+    assert.equal(latex, `\\displaystyle{${expected}}`);
+    assert.equal(toTex(latex, true), latex);
+    assert.equal(toLatex(latex, true), latex);
+  }
+  const converter = createMathConverter(parseCustomSymbols(String.raw`IR = \mathbb{R}`));
+  assert.equal(converter.toTex("IR\n\nIR^2", true), String.raw`\begin{gathered}{\mathbb{R}} \\ {\mathbb{R}}^{2}\end{gathered}`);
+});
+
+test("source wrapping, inline math, matrix contents, labels, and native LaTeX keep their layout", () => {
+  assert.equal(toTex("x\n+ y", true), toTex("x + y"));
+  assert.equal(toTex("x\n\ny", false), toTex("x y"));
+  const expressions = ["[(1,2),\n\n(3,4)]", "(x\n\n+ y)/2", '"a\n\nb" + x', "text(a\n\nb) + x", "mbox[a\n\nb] + x"];
+  for (const source of expressions) assert.equal(toTex(source, true), toTex(source, false));
+  const latex = String.raw`\begin{aligned}x &= 1 \\
+
+y &= 2\end{aligned}`;
+  assert.equal(toTex(latex, true), latex);
 });
 
 test("reports an unsupported renderer instead of partially installing", () => {

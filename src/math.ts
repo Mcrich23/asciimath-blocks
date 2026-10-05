@@ -34,6 +34,25 @@ export function isLatex(source: string): boolean {
   return false;
 }
 
+/** Blank lines separate display rows only outside groups and text labels. */
+function displayRows(source: string): string[] {
+  const rows: string[] = [];
+  let depth = 0;
+  let start = 0;
+  const tokens = source.matchAll(/"[^"]*"|(?:text|mbox)\s*(?:\([^)]*\)|\{[^}]*\}|\[[^\]]*\])|[()[\]{}]|\r?\n[\t ]*(?:\r?\n[\t ]*)+/g);
+  for (const match of tokens) {
+    const token = match[0];
+    if (token === "(" || token === "[" || token === "{") depth++;
+    else if (token === ")" || token === "]" || token === "}") depth = Math.max(0, depth - 1);
+    else if (depth === 0 && /^[\r\n]/.test(token)) {
+      rows.push(source.slice(start, match.index).trim());
+      start = match.index + token.length;
+    }
+  }
+  rows.push(source.slice(start).trim());
+  return rows;
+}
+
 /** Each configuration gets a fresh parser so removed symbols cannot linger. */
 export function createMathConverter(symbols: CustomSymbol[] = []) {
   const parser = new MathParser();
@@ -53,19 +72,24 @@ export function createMathConverter(symbols: CustomSymbol[] = []) {
   ];
   parser.sort_symbols();
 
-  function toTex(source: string): string {
+  function toTex(source: string, display = false): string {
     const expression = source.trim();
     // Native Live Preview can include quote prefixes in a block's render input.
     if (expression.startsWith(">")) {
       const latex = expression.replace(/^[\t ]*(?:>[\t ]*)+/gm, "").trim();
       if (isLatex(latex)) return latex;
     }
-    return isLatex(expression) ? expression : parser.parse(expression);
+    if (isLatex(expression)) return expression;
+    const rows = display ? displayRows(expression) : [expression];
+    const converted = rows.map(row => parser.parse(row));
+    return converted.length > 1
+      ? `\\begin{gathered}${converted.join(" \\\\ ")}\\end{gathered}`
+      : converted[0];
   }
 
   function toLatex(source: string, display: boolean): string {
     if (isLatex(source)) return source.trim();
-    return `\\${display ? "displaystyle" : "textstyle"}{${toTex(source)}}`;
+    return `\\${display ? "displaystyle" : "textstyle"}{${toTex(source, display)}}`;
   }
 
   return { toTex, toLatex };
