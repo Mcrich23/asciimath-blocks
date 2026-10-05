@@ -83,7 +83,7 @@ export function createMathConverter(symbols: CustomSymbol[] = []) {
     const rows = display ? displayRows(expression) : [expression];
     const converted = rows.map(row => parser.parse(row));
     return converted.length > 1
-      ? `\\begin{gathered}${converted.join(" \\\\ ")}\\end{gathered}`
+      ? `\\begin{gathered}${converted.join(" \\\\[1.15em] ")}\\end{gathered}`
       : converted[0];
   }
 

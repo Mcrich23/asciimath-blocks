@@ -38,7 +38,7 @@ test("inline and display math are converted, and removing the filter restores th
   });
   assert.equal(display.math, "\\sqrt{x}");
   assert.equal(inline.math, "\\frac{1}{2}");
-  assert.equal(multiline.math, String.raw`\begin{gathered}\sqrt{x} \\ x^{2}\end{gathered}`);
+  assert.equal(multiline.math, String.raw`\begin{gathered}\sqrt{x} \\[1.15em] x^{2}\end{gathered}`);
   assert.equal(latex.math, String.raw`\frac{a}{b}`);
   assert.equal(display.display, true);
   assert.equal(inline.display, false);
@@ -52,7 +52,7 @@ test("blank lines make display rows and survive conversion to native LaTeX", () 
     "= [(3(0) + 10(1)), (6(0) -1(1))]",
     "= [(10), (-1)]",
   ];
-  const expected = `\\begin{gathered}${rows.map(row => toTex(row)).join(" \\\\ ")}\\end{gathered}`;
+  const expected = `\\begin{gathered}${rows.map(row => toTex(row)).join(" \\\\[1.15em] ")}\\end{gathered}`;
   for (const separator of ["\n\n", "\r\n \t\r\n\r\n"]) {
     const source = `\n${rows.join(separator)}\n`;
     assert.equal(toTex(source, true), expected);
@@ -62,7 +62,7 @@ test("blank lines make display rows and survive conversion to native LaTeX", () 
     assert.equal(toLatex(latex, true), latex);
   }
   const converter = createMathConverter(parseCustomSymbols(String.raw`IR = \mathbb{R}`));
-  assert.equal(converter.toTex("IR\n\nIR^2", true), String.raw`\begin{gathered}{\mathbb{R}} \\ {\mathbb{R}}^{2}\end{gathered}`);
+  assert.equal(converter.toTex("IR\n\nIR^2", true), String.raw`\begin{gathered}{\mathbb{R}} \\[1.15em] {\mathbb{R}}^{2}\end{gathered}`);
 });
 
 test("source wrapping, inline math, matrix contents, labels, and native LaTeX keep their layout", () => {
