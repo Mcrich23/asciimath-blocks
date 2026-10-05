@@ -1,7 +1,7 @@
 {
   "id": "asciimath-blocks",
   "name": "AsciiMath Blocks",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minAppVersion": "1.9.10",
   "description": "Write readable AsciiMath in native inline and block math.",
   "author": "Morris Richman",
