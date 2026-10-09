@@ -17,6 +17,18 @@ test("converts representative AsciiMath expressions", () => {
   }
 });
 
+test("tildes remain visible in text labels and survive LaTeX conversion", () => {
+  for (const label of ['"~"', "text(~)", "text{~}", "text[~]", "mbox(~)"]) {
+    assert.equal(toTex(label), String.raw`\text{\(\textasciitilde\)}`);
+    const latex = toLatex(label, false);
+    assert.equal(toTex(latex), latex);
+  }
+  const source = 'text(a ~ b ~~ c) + x';
+  assert.equal(toTex(source, true), String.raw`\text{a \(\textasciitilde\) b \(\textasciitilde\)\(\textasciitilde\) c} + x`);
+  assert.equal(toTex("a ~ b"), "a ~ b");
+  assert.equal(toTex(String.raw`\text{a ~ b}`), String.raw`\text{a ~ b}`);
+});
+
 test("inline and display math are converted, and removing the filter restores the renderer", () => {
   const filters = new Set<(context: { math: { math: string; display: boolean } }) => void>();
   const runtime: MathJaxRuntime = {

@@ -2,6 +2,11 @@ import AsciiMathParser from "asciimath2tex";
 
 /** Small compatibility fixes around the upstream parser, without changing notes. */
 export default class MathParser extends AsciiMathParser {
+  override escape_text(source: string): string {
+    // A bare tilde becomes a nonbreaking space in MathJax's TeX text mode.
+    return super.escape_text(source).replace(/~/g, "\\(\\textasciitilde\\)");
+  }
+
   override arbitrary_constant(pos = 0) {
     const token = super.arbitrary_constant(pos);
     if (!token) return token;
