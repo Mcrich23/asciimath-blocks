@@ -61,9 +61,26 @@ its usual line-break syntax.
 | `sum_(n=1)^oo 1/n^2 = pi^2/6` | A sum with limits |
 | `[[1,2],[3,4]]` | A matrix |
 | `"for all" x in RR` | Text and symbols |
+| `x + highlight(y^2) = z` | Highlight part of an equation |
 
 Parentheses group expressions. Unicode math letters and minus signs are also
 supported. See [AsciiMath](https://asciimath.org/) for the full syntax.
+
+### Highlighting
+
+Wrap part of an equation in `highlight(...)` for a yellow background with black
+text, readable in light and dark themes. Everything inside stays AsciiMath:
+
+```text
+$x + highlight(y^2) = z$
+
+$$
+highlight((a+b)/(c+d)) = sqrt(x)
+$$
+```
+
+Highlights work inline and in display blocks, including inside fractions,
+roots, and matrices. The LaTeX conversion commands preserve them.
 
 ### Native LaTeX
 

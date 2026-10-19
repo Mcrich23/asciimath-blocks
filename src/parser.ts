@@ -2,6 +2,15 @@ import AsciiMathParser from "asciimath2tex";
 
 /** Small compatibility fixes around the upstream parser, without changing notes. */
 export default class MathParser extends AsciiMathParser {
+  override setup_symbols(): void {
+    super.setup_symbols();
+    // A native unary function keeps grouping, fractions, and nesting intact.
+    this.unary_symbols.push({
+      asciimath: "highlight",
+      tex: "\\bbox[yellow,2px,color:black]",
+    });
+  }
+
   override escape_text(source: string): string {
     // A bare tilde becomes a nonbreaking space in MathJax's TeX text mode.
     return super.escape_text(source).replace(/~/g, "\\(\\textasciitilde\\)");

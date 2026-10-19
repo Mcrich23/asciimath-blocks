@@ -29,6 +29,39 @@ test("tildes remain visible in text labels and survive LaTeX conversion", () => 
   assert.equal(toTex(String.raw`\text{a ~ b}`), String.raw`\text{a ~ b}`);
 });
 
+test("highlight wraps AsciiMath expressions without changing their grammar", () => {
+  const mark = (tex: string) => `\\bbox[yellow,2px,color:black]{${tex}}`;
+  const examples = [
+    ["x + highlight(y^2) = z", `x + ${mark("y^{2}")} = z`],
+    ["highlight((a+b)/(c+d))", mark(String.raw`\frac{a + b}{c + d}`)],
+    ["highlight(x)/2", `\\frac{${mark("x")}}{2}`],
+    ["sqrt(highlight(x + 1))", `\\sqrt{${mark("x + 1")}}`],
+    ["highlight(x)^2", `${mark("x")}^{2}`],
+    ["highlight(x + highlight(y))", mark(`x + ${mark("y")}`)],
+    ["[[highlight(1),2],[3,4]]", `\\left [ \\begin{matrix} ${mark("1")} & 2 \\\\ 3 & 4 \\end{matrix} \\right ]`],
+  ];
+  for (const [source, expected] of examples) {
+    assert.equal(isLatex(source!), false);
+    assert.equal(toTex(source!), expected);
+    for (const display of [false, true]) {
+      const latex = toLatex(source!, display);
+      assert.equal(toTex(latex, display), latex);
+      assert.ok(latex.includes(expected!));
+    }
+  }
+  assert.equal(toTex("highlight(x\n\n+ y)", true), mark("x + y"));
+  assert.equal(toTex("highlight(x)\n\ny", true), `\\begin{gathered}${mark("x")} \\\\[1.15em] y\\end{gathered}`);
+});
+
+test("highlight supports custom symbols and preserves labels and native LaTeX", () => {
+  const converter = createMathConverter(parseCustomSymbols(String.raw`IR = \mathbb{R}`));
+  assert.equal(converter.toTex("highlight(x in IR)"), String.raw`\bbox[yellow,2px,color:black]{x \in {\mathbb{R}}}`);
+  assert.equal(toTex('"highlight(x)" + text(highlight)'), String.raw`\text{highlight(x)} + \text{highlight}`);
+  const latex = String.raw`\bbox[yellow]{\frac{a}{b}}`;
+  assert.equal(toTex(latex), latex);
+  assert.throws(() => createMathConverter(parseCustomSymbols("highlight = x")), /AsciiMath function/);
+});
+
 test("inline and display math are converted, and removing the filter restores the renderer", () => {
   const filters = new Set<(context: { math: { math: string; display: boolean } }) => void>();
   const runtime: MathJaxRuntime = {
