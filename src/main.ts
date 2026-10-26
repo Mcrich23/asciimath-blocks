@@ -5,6 +5,7 @@ import { registerConversionCommands } from "./commands.ts";
 import { mathPreviewExtension } from "./editor-preview.ts";
 import { createMathConverter, parseCustomSymbols } from "./math.ts";
 import { SymbolSettingsTab } from "./settings.ts";
+import { registerExpandedPreview } from "./expanded-preview.ts";
 
 export default class AsciiMathBlocks extends Plugin {
   private unloaded = false;
@@ -24,7 +25,8 @@ export default class AsciiMathBlocks extends Plugin {
       new Notice("Could not load custom symbols. Check AsciiMath Blocks settings.");
     }
     this.addSettingTab(new SymbolSettingsTab(this));
-    registerConversionCommands(this, (source, display) => this.converter.toLatex(source, display));
+    registerConversionCommands(this, (source, display, previous) => this.converter.toLatex(source, display, previous));
+    registerExpandedPreview(this, (source, display, previous) => this.converter.toLatex(source, display, previous));
     try {
       await loadMathJax();
       if (this.unloaded) return;
@@ -33,7 +35,7 @@ export default class AsciiMathBlocks extends Plugin {
       if (!runtime) throw new Error("MathJax did not load.");
 
       const removeFilter = installAsciiMath(runtime, (source, display) => this.converter.toTex(source, display));
-      this.registerEditorExtension(mathPreviewExtension);
+      this.registerEditorExtension(mathPreviewExtension((source, display, previous) => this.converter.toLatex(source, display, previous)));
       this.register(() => {
         removeFilter();
         refreshMath(this.app.workspace);

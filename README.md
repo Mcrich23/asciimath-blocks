@@ -82,6 +82,35 @@ $$
 Highlights work inline and in display blocks, including inside fractions,
 roots, and matrices. The LaTeX conversion commands preserve them.
 
+### Expanding variables
+
+Use `exp(x)` to insert the latest definition of `x` above it in the same
+note. Parentheses are optional: `exp x` works too, including in expressions
+such as `exp x/2` or `exp x^2`. Definitions use `x = ...` or `x := ...` inside
+math, including earlier inline expressions and display blocks:
+
+```text
+$x = a+b$
+
+$$
+exp(x)^2
+$$
+```
+
+This renders the square of the whole expression `a+b`. Matrices work too:
+define `$A = [[1,2],[3,4]]$`, then use `exp(A)` in a later block.
+Definitions are case-sensitive. A later definition applies only below it.
+For chained assignments such as `x = 7 = 3+4`, expansion uses the final
+expression, `3+4`. Equals signs inside groups or text labels stay in that expression.
+Assignments can span lines, including a value below `x =` and subsequent
+`= ...` rows separated by blank lines. For example, `x = 99` followed by
+`= [(1,0),(0,1)]` in the same block defines `x` as that final matrix.
+Undefined variables stay as written. Expansion inserts one definition; bare
+variables inside that definition stay symbolic. Use explicit `exp(...)`
+inside a definition when you want to include another definition's current value.
+Quoted labels, code examples, and native LaTeX are left alone. Notes and undo
+history are unchanged; the LaTeX conversion commands preserve expanded output.
+
 ### Native LaTeX
 
 LaTeX works in the same delimiters:

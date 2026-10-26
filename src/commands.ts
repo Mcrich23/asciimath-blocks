@@ -4,7 +4,7 @@ import { isLatex, toLatex } from "./math.ts";
 import { mathRanges, type MathRange } from "./math-ranges.ts";
 
 function latexChange(
-  editor: Editor, source: string, range: MathRange, convert: typeof toLatex,
+  editor: Editor, source: string, range: MathRange, convert: typeof toLatex, previous: string[],
 ): EditorChange | null {
   let content = source.slice(range.contentFrom, range.contentTo);
   const lineStart = source.lastIndexOf("\n", range.from - 1) + 1;
@@ -19,7 +19,7 @@ function latexChange(
   // Preserve the delimiters, outer whitespace, and blockquote structure.
   const leading = content.match(/^\s*/)?.[0] ?? "";
   const trailing = content.match(/\s*$/)?.[0] ?? "";
-  let text = leading + convert(content, range.display) + trailing;
+  let text = leading + convert(content, range.display, previous) + trailing;
   if (quotePrefix) text = text.replace(/\n/g, `\n${quotePrefix}`);
   return {
     from: editor.offsetToPos(range.contentFrom),
@@ -42,7 +42,8 @@ export function registerConversionCommands(plugin: Plugin, convert: typeof toLat
         // Obsidian documents editor.cm access, but does not include it in its types.
         const cm = (editor as Editor & { cm?: { state: EditorState } }).cm;
         if (!cm) return false;
-        let ranges = mathRanges(cm.state, true);
+        const allRanges = mathRanges(cm.state, true);
+        let ranges = allRanges;
         if (!command.all) {
           const selections = editor.listSelections();
           if (selections.length !== 1) return false;
@@ -54,7 +55,9 @@ export function registerConversionCommands(plugin: Plugin, convert: typeof toLat
           if (ranges.length !== 1) return false;
         }
         try {
-          const changes = ranges.map(range => latexChange(editor, source, range, convert))
+          const changes = ranges.map(range => latexChange(editor, source, range, convert,
+            allRanges.filter(previous => previous.to <= range.from)
+              .map(previous => source.slice(previous.contentFrom, previous.contentTo))))
             .filter((change): change is EditorChange => change !== null);
           if (changes.length === 0) return false;
           if (!checking) {

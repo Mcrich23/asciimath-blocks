@@ -3,6 +3,7 @@ import { refreshMathPreview } from "./editor-preview.ts";
 import { MarkdownView, type Editor, type Workspace } from "obsidian";
 
 interface NativeMathElement extends HTMLElement {
+  cmTile?: NativeMathElement["cmView"];
   cmView?: {
     widget?: {
       render?: (element: HTMLElement) => void;
@@ -24,7 +25,7 @@ export function refreshMath(workspace: Workspace): void {
     leaf.view.containerEl
       .querySelectorAll<NativeMathElement>(".markdown-source-view .math")
       .forEach(element => {
-        const widget = element.cmView?.widget;
+        const widget = element.cmTile?.widget ?? element.cmView?.widget;
         if (typeof widget?.render === "function") {
           widget.render(element);
         }

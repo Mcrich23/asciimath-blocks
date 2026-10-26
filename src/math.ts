@@ -1,4 +1,5 @@
 import MathParser from "./parser.ts";
+import { expandVariables } from "./expanded.ts";
 
 export interface CustomSymbol {
   name: string;
@@ -59,6 +60,7 @@ export function createMathConverter(symbols: CustomSymbol[] = []) {
   const functions = new Set([...parser.unary_symbols, ...parser.binary_symbols].map(symbol => symbol.asciimath));
   functions.add("text");
   functions.add("mbox");
+  functions.add("exp");
   for (const symbol of symbols) {
     if (functions.has(symbol.name)) throw new Error(`${symbol.name} is an AsciiMath function. Choose another name.`);
   }
@@ -72,7 +74,7 @@ export function createMathConverter(symbols: CustomSymbol[] = []) {
   ];
   parser.sort_symbols();
 
-  function toTex(source: string, display = false): string {
+  function toTex(source: string, display = false, previous: string[] = []): string {
     const expression = source.trim();
     // Native Live Preview can include quote prefixes in a block's render input.
     if (expression.startsWith(">")) {
@@ -80,16 +82,34 @@ export function createMathConverter(symbols: CustomSymbol[] = []) {
       if (isLatex(latex)) return latex;
     }
     if (isLatex(expression)) return expression;
-    const rows = display ? displayRows(expression) : [expression];
-    const converted = rows.map(row => parser.parse(row));
-    return converted.length > 1
-      ? `\\begin{gathered}${converted.join(" \\\\[1.15em] ")}\\end{gathered}`
-      : converted[0];
+    const constants = parser.constants;
+    let id = 0;
+    try {
+      const expanded = expandVariables(expression, value => {
+        let name: string;
+        do { name = `AsciiMathExpanded${id++}Token`; } while ([expression, ...previous].some(value => value.includes(name)));
+        const tex = parser.parse(value);
+        const atom = parser.simple(0);
+        const grouped = atom && parser.eof(atom.end) && atom.ttype !== "negative_simple";
+        const replacement = grouped ? tex : `\\left(${tex}\\right)`;
+        parser.constants = [{ asciimath: name, tex: `{${replacement}}` }, ...parser.constants];
+        parser.sort_symbols();
+        return name;
+      }, expression.includes("exp") ? previous.filter(value => !isLatex(value)) : []);
+      const rows = display ? displayRows(expanded) : [expanded];
+      const converted = rows.map(row => parser.parse(row));
+      return converted.length > 1
+        ? `\\begin{gathered}${converted.join(" \\\\[1.15em] ")}\\end{gathered}`
+        : converted[0];
+    } finally {
+      parser.constants = constants;
+      parser.sort_symbols();
+    }
   }
 
-  function toLatex(source: string, display: boolean): string {
+  function toLatex(source: string, display: boolean, previous: string[] = []): string {
     if (isLatex(source)) return source.trim();
-    return `\\${display ? "displaystyle" : "textstyle"}{${toTex(source, display)}}`;
+    return `\\${display ? "displaystyle" : "textstyle"}{${toTex(source, display, previous)}}`;
   }
 
   return { toTex, toLatex };

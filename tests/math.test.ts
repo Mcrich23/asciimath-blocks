@@ -13,7 +13,7 @@ test("converts representative AsciiMath expressions", () => {
     ["", ""],
   ];
   for (const [source, expected] of examples) {
-    assert.equal(toTex(source!), expected);
+    assert.equal(toTex(source), expected);
   }
 });
 
@@ -41,12 +41,12 @@ test("highlight wraps AsciiMath expressions without changing their grammar", () 
     ["[[highlight(1),2],[3,4]]", `\\left [ \\begin{matrix} ${mark("1")} & 2 \\\\ 3 & 4 \\end{matrix} \\right ]`],
   ];
   for (const [source, expected] of examples) {
-    assert.equal(isLatex(source!), false);
-    assert.equal(toTex(source!), expected);
+    assert.equal(isLatex(source), false);
+    assert.equal(toTex(source), expected);
     for (const display of [false, true]) {
-      const latex = toLatex(source!, display);
+      const latex = toLatex(source, display);
       assert.equal(toTex(latex, display), latex);
-      assert.ok(latex.includes(expected!));
+      assert.ok(latex.includes(expected));
     }
   }
   assert.equal(toTex("highlight(x\n\n+ y)", true), mark("x + y"));
@@ -204,12 +204,84 @@ test("pasted Unicode set-builder expressions preserve letters and correctly pars
     ["𝒙_1 + 𝛼", "𝒙_{1} + 𝛼"],
   ];
   for (const [source, expected] of examples) {
-    assert.equal(converter.toTex(source!), expected);
-    assert.doesNotMatch(converter.toTex(source!), /\p{Surrogate}|[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u);
-    const latex = converter.toLatex(source!, false);
+    assert.equal(converter.toTex(source), expected);
+    assert.doesNotMatch(converter.toTex(source), /\p{Surrogate}|[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u);
+    const latex = converter.toLatex(source, false);
     assert.equal(converter.toTex(latex), latex);
   }
   assert.equal(toTex('"𝐶−1︀" + text(𝐷−1︀)'), String.raw`\text{𝐶−1︀} + \text{𝐷−1︀}`);
   assert.equal(toTex("C\u{E0100}"), "C");
   assert.equal(toTex(String.raw`\mathbb{Z} + 𝐶 − 1`), String.raw`\mathbb{Z} + 𝐶 − 1`);
+});
+
+test("expanded uses earlier definitions in note order and preserves grouping", () => {
+  const converter = createMathConverter();
+  assert.equal(converter.toTex("exp(x)^2", false, ["x = a+b"]), String.raw`{\left(a + b\right)}^{2}`);
+  assert.equal(converter.toTex("1/exp(x)", false, ["x = a+b"]), String.raw`\frac{1}{{\left(a + b\right)}}`);
+  assert.equal(converter.toTex("exp(x)", false, ["x = 1", "x := 2"]), "{2}");
+  assert.equal(converter.toTex("exp(x)"), "x");
+  assert.equal(converter.toTex("exp(x)\n\nx = 9", true), String.raw`\begin{gathered}x \\[1.15em] x = 9\end{gathered}`);
+  assert.equal(converter.toTex("x = 1\n\nexp(x)\n\nx = 2\n\nexp(x)", true), String.raw`\begin{gathered}x = 1 \\[1.15em] {1} \\[1.15em] x = 2 \\[1.15em] {2}\end{gathered}`);
+  assert.equal(converter.toTex("exp(y)", false, ["x = 1", "y = exp(x) + 2", "x = 9"]), String.raw`{\left({1} + 2\right)}`);
+  assert.equal(converter.toTex("exp(x)"), "x", "definitions do not leak between notes");
+});
+
+test("expanded handles matrices, Unicode, labels, and conversion to LaTeX", () => {
+  const converter = createMathConverter(parseCustomSymbols(String.raw`IR = \mathbb{R}`));
+  const matrix = "[[1,2],[3,4]]";
+  assert.equal(converter.toTex("exp(A)", true, [`A = ${matrix}`]), `{${toTex(matrix)}}`);
+  assert.equal(converter.toTex("exp(𝐴)", false, ["𝐴 := [[1,2],\n[3,4]]"]), `{${toTex(matrix)}}`);
+  assert.equal(converter.toTex("highlight(exp(x))", false, ["x = IR"]), String.raw`\bbox[yellow,2px,color:black]{{{\mathbb{R}}}}`);
+  const text = '"exp(x)" + text(exp(x))';
+  assert.equal(converter.toTex(text, false, ["x = 5"]), toTex(text));
+  assert.equal(converter.toTex(String.raw`\text{exp(x)}`, false, ["x = 5"]), String.raw`\text{exp(x)}`);
+  assert.equal(converter.toTex("exp(x)", false, ["x >= 3", "x == 4", "x => 5"]), "x");
+  const latex = converter.toLatex("exp(x)^2", true, ["x = a+b"]);
+  assert.equal(latex, String.raw`\displaystyle{{\left(a + b\right)}^{2}}`);
+  assert.equal(converter.toTex(latex), latex);
+  assert.throws(() => createMathConverter(parseCustomSymbols("exp = x")), /AsciiMath function/);
+});
+
+test("expanded uses the final top-level expression in chained assignments", () => {
+  const convert = (definition: string) => toTex("exp(x)", false, [definition]);
+  assert.equal(convert("x = 7 = 3+4"), String.raw`{\left(3 + 4\right)}`);
+  assert.equal(convert("x := 7 = 3+4 = 8"), "{8}");
+  for (const value of ["[[1,2],[3,4]]", "{t|t = 4}", '(a = b)', '"a=b"', "text(a=b)", "mbox[a=b]"]) {
+    assert.equal(convert(`x = 7 = ${value}`), convert(`x = ${value}`));
+  }
+  for (const value of ["a >= b", "a <= b", "a != b", "a == b", "a => b"]) {
+    assert.equal(convert(`x = 7 = ${value}`), convert(`x = ${value}`));
+  }
+  assert.equal(toTex("exp(x)", false, ["x = 2", "x = 7 ="]), "{2}");
+  assert.equal(toTex("x = 7 = 3+4\n\nexp(x)", true), String.raw`\begin{gathered}x = 7 = 3 + 4 \\[1.15em] {\left(3 + 4\right)}\end{gathered}`);
+});
+
+test("exp follows multiline assignments and equality continuations", () => {
+  const matrix = "[(1,0),(0,1)]";
+  for (const separator of ["\n", "\n\n", "\r\n\r\n"]) {
+    assert.equal(toTex("exp(x)", false, [`x = 99${separator}= ${matrix}`]), `{${toTex(matrix)}}`);
+    assert.equal(toTex("exp(x)", false, [`x${separator}= 7${separator}= 3+4`]), String.raw`{\left(3 + 4\right)}`);
+    assert.equal(toTex("exp(x)", false, [`x :=${separator}${matrix}`]), `{${toTex(matrix)}}`);
+  }
+  assert.equal(toTex("exp(x)", false, ["x = a\n+ b\n+ c"]), String.raw`{\left(a + b + c\right)}`);
+  assert.equal(toTex("exp(x)", false, ["x = a +\nb"]), String.raw`{\left(a + b\right)}`);
+  assert.equal(toTex("exp(x)", false, ["x = a\nb"]), String.raw`{\left(a b\right)}`);
+  assert.equal(toTex("exp(x)", false, ["x = 2\ny = 3"]), "{2}");
+  assert.equal(toTex("exp(y)", false, ["x = 2\ny = 3"]), "{3}");
+  assert.equal(toTex("x = 99\n\n= 3+4\n\nexp(x)", true), String.raw`\begin{gathered}x = 99 \\[1.15em] = 3 + 4 \\[1.15em] {\left(3 + 4\right)}\end{gathered}`);
+  assert.equal(toTex("x = 2\nexp(x)", false), "x = 2 {2}");
+});
+
+test("exp accepts a bare variable with the same grouping and scope", () => {
+  const previous = ["x = 7 = 3+4", "A = [[1,2],[3,4]]", "𝐴 = 5", "x_1 = 8", "xy = 9"];
+  for (const name of ["x", "A", "𝐴", "x_1", "xy", "missing"]) {
+    for (const expression of [`exp ${name}`, `exp ${name}^2`, `exp ${name}/2`, `highlight(exp ${name})`]) {
+      assert.equal(toTex(expression, false, previous), toTex(expression.replace(`exp ${name}`, `exp(${name})`), false, previous));
+    }
+  }
+  assert.equal(toTex("x = 2\nexp x", false), "x = 2 {2}");
+  assert.equal(toTex("x = 2\n\nexp x", true), String.raw`\begin{gathered}x = 2 \\[1.15em] {2}\end{gathered}`);
+  const labels = '"exp x" + text(exp x) + mbox[exp x]';
+  assert.equal(toTex(labels, false, previous), toTex(labels));
+  assert.equal(toTex("myexp x", false, previous), toTex("myexp x"));
 });
