@@ -285,3 +285,35 @@ test("exp accepts a bare variable with the same grouping and scope", () => {
   assert.equal(toTex(labels, false, previous), toTex(labels));
   assert.equal(toTex("myexp x", false, previous), toTex("myexp x"));
 });
+
+test("exp resolves superscript and subscript identifiers independently", () => {
+  const previous = ["E = 2", "E_1 = 3", "E_1^-1 = [[1,0],[0,1]]", "A^2 = 7", "x_(i+1)^(-2) = 9"];
+  const matrix = `{${toTex("[[1,0],[0,1]]")}}`;
+  for (const expression of ["exp(E_1^-1)", "exp(E_(1)^(-1))", "exp(E_{1}^{-1})", "exp E_1^-1", "exp E_1^−1"]) {
+    assert.equal(toTex(expression, false, previous), matrix, expression);
+  }
+  assert.equal(toTex("exp(E_1)", false, previous), "{3}");
+  assert.equal(toTex("exp(E)", false, previous), "{2}");
+  assert.equal(toTex("exp(A^2)", false, previous), "{7}");
+  assert.equal(toTex("exp A^2", false, previous), "{7}");
+  assert.equal(toTex("exp E_1^2", false, previous), "{3}^{2}");
+  assert.equal(toTex("exp(E_1^2)", false, previous), toTex("E_1^2"));
+  assert.equal(toTex("exp(x_(i+1)^(-2))", false, previous), "{9}");
+  assert.equal(toTex("exp(x_{i+1}^{-2})", false, previous), "{9}");
+  assert.equal(toTex("exp(E_1^-1)", false, [...previous, "E_1^-1 = 5 = 6"]), "{6}");
+  assert.equal(toTex("exp E_1^-1", false, ["E_1^-1 =\n[[1,0],[0,1]]"]), matrix);
+  assert.equal(toTex('"exp E_1^-1"', false, previous), toTex('"exp E_1^-1"'));
+});
+
+test("exp collects assignments separated by and in the same math expression", () => {
+  const definitions = "b_1 = [(︀3, −2, 1.4)]︀^T and b_2 = [︀(0, 0, 0)]︀^T";
+  for (const [name, value] of [["b_1", "[(3,-2,1.4)]^T"], ["b_2", "[(0,0,0)]^T"]]) {
+    assert.equal(toTex(`exp(${name})`, false, [definitions]), toTex(`exp(${name})`, false, [`${name} = ${value}`]));
+  }
+  assert.equal(toTex("b_2 = exp(b_2)", false, [definitions]), toTex("b_2 = exp(b_2)", false, ["b_2 = [(0,0,0)]^T"]));
+  assert.equal(toTex("a = 2 and b = exp(a)\n\nexp(b)", true), String.raw`\begin{gathered}a = 2 \quad\text{and}\quad b = {2} \\[1.15em] {{2}}\end{gathered}`);
+  assert.equal(toTex("exp(a)", false, ["a = 1 and b = 2 and a = 3"]), "{3}");
+  for (const value of ['"and b = 7"', "text(and b = 7)", "{x | x = 1 and b = 7}"]) {
+    assert.equal(toTex("exp(b)", false, [`a = ${value}`]), "b");
+  }
+});

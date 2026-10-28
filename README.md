@@ -99,7 +99,15 @@ $$
 
 This renders the square of the whole expression `a+b`. Matrices work too:
 define `$A = [[1,2],[3,4]]$`, then use `exp(A)` in a later block.
+Multiple definitions can share one expression: `$a = 2 and b = 3$` defines
+both `a` and `b` for later expansion.
+
 Definitions are case-sensitive. A later definition applies only below it.
+Subscripts and superscripts can be part of a name: define `E_1^-1 = ...`,
+then use `exp(E_1^-1)` or `exp E_1^-1`. Grouped scripts such as `E_(1)^(-1)`
+refer to the same name. A bare call uses the full defined name first;
+otherwise, `exp x^2` squares the expansion of `x`. Use `exp(x^2)` to look up
+only the identifier `x^2`.
 For chained assignments such as `x = 7 = 3+4`, expansion uses the final
 expression, `3+4`. Equals signs inside groups or text labels stay in that expression.
 Assignments can span lines, including a value below `x =` and subsequent

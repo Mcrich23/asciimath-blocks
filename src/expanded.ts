@@ -1,8 +1,16 @@
-const variable = String.raw`[\p{L}][\p{L}\p{N}]*(?:_(?:[\p{L}\p{N}]+|\([\p{L}\p{N}]+\)))?`;
+const script = String.raw`(?:\([^()\r\n]+\)|\{[^{}\r\n]+\}|[+−-]?(?:[0-9]+|[\p{L}][\p{L}\p{N}]*))`;
+const variable = String.raw`[\p{L}][\p{L}\p{N}]*(?:[\t ]*[_^][\t ]*${script})*`;
 const assignment = new RegExp(`^\\s*(${variable})\\s*(?::=|=(?!=|>))\\s*(.+)$`, "su");
 const assignmentStart = new RegExp(`^\\s*${variable}\\s*(?::=|=(?!=|>))`, "u");
 const expansion = new RegExp(`^exp(?:\\s*\\(\\s*(${variable})\\s*\\)|[\\t ]+(${variable})(?![\\p{L}\\p{N}_]))`, "u");
 const label = /^(?:"[^"]*"|(?:text|mbox)\s*(?:\([^)]*\)|\{[^}]*\}|\[[^\]]*\]))/;
+
+function identifierKey(name: string): string {
+  return name.replace(/\s+/g, "").replace(/−/g, "-")
+    .replace(/([_^])(?:\(([^()]*)\)|\{([^{}]*)\})/g,
+      (_match, marker: string, parenthesized: string | undefined, braced: string | undefined) =>
+        marker + (parenthesized ?? braced));
+}
 
 function finalAssignment(source: string): string {
   let start = 0;
@@ -32,7 +40,7 @@ export function expandVariables(source: string, substitute: (value: string) => s
     const definition = line.match(assignment);
     if (definition) {
       const value = finalAssignment(definition[2]);
-      if (value) definitions.set(definition[1], value);
+      if (value) definitions.set(identifierKey(definition[1]), value);
     }
     result += line;
     line = "";
@@ -50,12 +58,33 @@ export function expandVariables(source: string, substitute: (value: string) => s
         index += text[0].length;
         continue;
       }
+      const conjunction = depth === 0 && assignmentStart.test(line)
+        && /\s/.test(input[index - 1] ?? "") ? rest.match(/^and\s+/) : null;
+      if (conjunction && assignmentStart.test(rest.slice(conjunction[0].length))) {
+        finishLine();
+        result += conjunction[0];
+        index += conjunction[0].length;
+        continue;
+      }
       const call = (index === 0 || !/[\p{L}\p{N}_]/u.test(input[index - 1]))
         ? rest.match(expansion) : null;
       if (call) {
         const name = call[1] ?? call[2];
-        const value = definitions.get(name);
-        line += value === undefined ? name : substitute(value);
+        let value = definitions.get(identifierKey(name));
+        let suffix = "";
+        // Bare calls retain powers of an existing identifier unless the full name is defined.
+        if (value === undefined && call[2]) {
+          const markers = [...name.matchAll(/[_^]/g)].reverse();
+          for (const marker of markers) {
+            const candidate = definitions.get(identifierKey(name.slice(0, marker.index)));
+            if (candidate !== undefined) {
+              value = candidate;
+              suffix = name.slice(marker.index);
+              break;
+            }
+          }
+        }
+        line += value === undefined ? name : substitute(value) + suffix;
         index += call[0].length;
         continue;
       }
