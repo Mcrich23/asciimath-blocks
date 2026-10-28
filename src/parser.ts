@@ -25,6 +25,18 @@ export default class MathParser extends AsciiMathParser {
     return { ...token, tex: String.fromCodePoint(point), end: token.end + 1 };
   }
 
+  override matrix(pos = 0) {
+    const matrix = super.matrix(pos);
+    if (matrix?.rows.length === 1) {
+      const inner = this.matrix(matrix.left.end);
+      if (inner) {
+        const right = this.right_bracket(inner.end) || this.leftright_bracket(inner.end, "right");
+        if (right?.end === matrix.end) return;
+      }
+    }
+    return matrix;
+  }
+
   override parse(source: string): string {
     // Preserve text labels. Elsewhere, ignore pasted glyph selectors and give
     // Unicode minus its normal grammar (including negative powers/arguments).

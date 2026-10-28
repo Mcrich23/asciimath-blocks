@@ -17,6 +17,24 @@ test("converts representative AsciiMath expressions", () => {
   }
 });
 
+test("wrapping a matrix preserves its rows and surrounding grouping", () => {
+  for (const source of ["[(2),(4)]", "[[1,2],[3,4]]", "[(1,2)]"]) {
+    const matrix = toTex(source);
+    const wrapped = `\\left ( ${matrix} \\right )`;
+    assert.equal(toTex(`(${source})`), wrapped);
+    assert.equal(toTex(`( (${source}) )`), `\\left ( ${wrapped} \\right )`);
+    assert.equal(toTex(`(${source})^2`), `${wrapped}^{2}`);
+    assert.equal(toTex(`(${source})/2`), `\\frac{${matrix}}{2}`);
+    for (const display of [false, true]) {
+      assert.equal(toTex(`(${source})`, display), wrapped);
+      const latex = toLatex(`(${source})`, display);
+      assert.equal(toTex(latex, display), latex);
+    }
+  }
+  assert.equal(toTex("[(2),(4)]"), String.raw`\left [ \begin{matrix} 2 \\ 4 \end{matrix} \right ]`);
+  assert.equal(toTex("[(1,2)]"), String.raw`\left [ \begin{matrix} 1 & 2 \end{matrix} \right ]`);
+});
+
 test("tildes remain visible in text labels and survive LaTeX conversion", () => {
   for (const label of ['"~"', "text(~)", "text{~}", "text[~]", "mbox(~)"]) {
     assert.equal(toTex(label), String.raw`\text{\(\textasciitilde\)}`);
