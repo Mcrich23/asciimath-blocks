@@ -35,6 +35,41 @@ test("wrapping a matrix preserves its rows and surrounding grouping", () => {
   assert.equal(toTex("[(1,2)]"), String.raw`\left [ \begin{matrix} 1 & 2 \end{matrix} \right ]`);
 });
 
+test("semicolons separate column-vector entries with normal expression grouping", () => {
+  const examples = [
+    ["[1;2;3]", "[(1),(2),(3)]"],
+    ["[ 1 ;\n -2 ;\n\n 3 ]", "[(1),(-2),(3)]"],
+    ["[a+b;1/2;sqrt(x)]", "[(a+b),(1/2),(sqrt(x))]"],
+    ["[1;2;3]^T", "[(1),(2),(3)]^T"],
+    ["([1;2;3])^2", "([(1),(2),(3)])^2"],
+    ["[1;2;3]/2", "[(1),(2),(3)]/2"],
+    ["highlight([1;2;3])", "highlight([(1),(2),(3)])"],
+    ["[[1;2];[3;4]]", "[([(1),(2)]), ([(3),(4)])]"],
+    ['["a;b";text(c;d);mbox[e;f]]', '[("a;b"),(text(c;d)),(mbox[e;f])]'],
+    ["[(a;b);{c;d}]", "[((a;b)),({c;d})]"],
+  ];
+  for (const [source, original] of examples) {
+    for (const display of [false, true]) {
+      assert.equal(toTex(source, display), toTex(original, display), source);
+      const latex = toLatex(source, display);
+      assert.equal(toTex(latex, display), latex);
+    }
+  }
+  assert.equal(toTex("[1;2;3]"), String.raw`\left [ \begin{matrix} 1 \\ 2 \\ 3 \end{matrix} \right ]`);
+  const converter = createMathConverter(parseCustomSymbols(String.raw`IR = \mathbb{R}`));
+  assert.equal(converter.toTex("[IR;IR^2]"), converter.toTex("[(IR),(IR^2)]"));
+  assert.equal(toTex("exp(v)", false, ["v = [1;2;3]"]), `{${toTex("[(1),(2),(3)]")}}`);
+});
+
+test("semicolons outside column vectors and vector syntax inside labels stay literal", () => {
+  assert.equal(toTex("a;b"), "a ; b");
+  assert.equal(toTex("(a;b)"), String.raw`\left ( a ; b \right )`);
+  assert.equal(toTex("[1,2,3]"), String.raw`\left [ 1 , 2 , 3 \right ]`);
+  assert.equal(toTex('"[1;2]" + text([3;4]) + mbox{[5;6]}'), String.raw`\text{[1;2]} + \text{[3;4]} + \text{[5;6]}`);
+  const latex = String.raw`\text{[1;2;3]}`;
+  assert.equal(toTex(latex), latex);
+});
+
 test("tildes remain visible in text labels and survive LaTeX conversion", () => {
   for (const label of ['"~"', "text(~)", "text{~}", "text[~]", "mbox(~)"]) {
     assert.equal(toTex(label), String.raw`\text{\(\textasciitilde\)}`);

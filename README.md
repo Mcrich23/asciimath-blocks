@@ -60,6 +60,7 @@ its usual line-break syntax.
 | `sin^2 theta + cos^2 theta = 1` | Functions and Greek letters |
 | `sum_(n=1)^oo 1/n^2 = pi^2/6` | A sum with limits |
 | `[[1,2],[3,4]]` | A matrix |
+| `[1;2;3]` | A column vector, equivalent to `[(1),(2),(3)]` |
 | `"for all" x in RR` | Text and symbols |
 | `x + highlight(y^2) = z` | Highlight part of an equation |
 

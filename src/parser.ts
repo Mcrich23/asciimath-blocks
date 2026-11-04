@@ -1,5 +1,35 @@
 import AsciiMathParser from "asciimath2tex";
 
+function expandColumnVectors(source: string): string {
+  if (!source.includes(";")) return source;
+  const stack = [{ open: "", rows: [""] }];
+  const append = (value: string) => {
+    const rows = stack[stack.length - 1].rows;
+    rows[rows.length - 1] += value;
+  };
+  const close = (right: string) => {
+    const { open, rows } = stack.pop()!;
+    const content = open === "[" && right === "]" && rows.length > 1 && rows.every(row => row.trim())
+      ? rows.map(row => `(${row})`).join(",")
+      : rows.join(";");
+    append(open + content + right);
+  };
+  let end = 0;
+  const tokens = source.matchAll(/"[^"]*"|(?:text|mbox)\s*(?:\([^)]*\)|\{[^}]*\}|\[[^\]]*\])|[()[\]{};]/g);
+  for (const match of tokens) {
+    append(source.slice(end, match.index));
+    const token = match[0];
+    if (token === "(" || token === "[" || token === "{") stack.push({ open: token, rows: [""] });
+    else if ((token === ")" || token === "]" || token === "}") && stack.length > 1) close(token);
+    else if (token === ";" && stack[stack.length - 1].open === "[") stack[stack.length - 1].rows.push("");
+    else append(token);
+    end = match.index + token.length;
+  }
+  append(source.slice(end));
+  while (stack.length > 1) close("");
+  return stack[0].rows[0];
+}
+
 /** Small compatibility fixes around the upstream parser, without changing notes. */
 export default class MathParser extends AsciiMathParser {
   override setup_symbols(): void {
@@ -48,6 +78,6 @@ export default class MathParser extends AsciiMathParser {
         return token === "−" ? " - " : "";
       },
     );
-    return super.parse(expression);
+    return super.parse(expandColumnVectors(expression));
   }
 }
