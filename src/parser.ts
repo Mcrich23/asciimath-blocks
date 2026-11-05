@@ -67,6 +67,23 @@ export default class MathParser extends AsciiMathParser {
     return matrix;
   }
 
+  override mid_expression(...args: Parameters<AsciiMathParser["mid_expression"]>) {
+    const result = super.mid_expression(...args);
+    if (!result) return result;
+    // Upstream rejoins condition expressions with spaces, losing their commas.
+    // Keep the parsed list's TeX, including nested groups and trailing commas.
+    const parts = result.middle.exprs;
+    const prefix = parts.slice(0, -2).map((part: { tex: string }) => part.tex).join(" ");
+    const delimiter = parts[parts.length - 2];
+    const conditions = parts[parts.length - 1];
+    const tex = `${prefix} ${delimiter.def.mid_tex} ${conditions.tex}`;
+    return {
+      ...result,
+      tex: `\\left ${result.left.tex} ${tex} \\right ${result.right.tex}`,
+      middle: { ...result.middle, tex },
+    };
+  }
+
   override parse(source: string): string {
     // Preserve text labels. Elsewhere, ignore pasted glyph selectors and give
     // Unicode minus its normal grammar (including negative powers/arguments).

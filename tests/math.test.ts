@@ -70,6 +70,28 @@ test("semicolons outside column vectors and vector syntax inside labels stay lit
   assert.equal(toTex(latex), latex);
 });
 
+test("set-builder conditions preserve commas after the vertical bar", () => {
+  const source = "RR_+^(2 xx 2) := {[(a,b),(c,d)] | a >= 0, b >= 0, c >= 0, d >= 0}.";
+  const expected = String.raw`\mathbb{R}_{+}^{2 \times 2} := \left \lbrace \left [ \begin{matrix} a & b \\ c & d \end{matrix} \right ] \mid a \ge 0 , b \ge 0 , c \ge 0 , d \ge 0 \right \rbrace .`;
+  for (const display of [false, true]) {
+    assert.equal(toTex(source, display), expected);
+    const latex = toLatex(source, display);
+    assert.equal(toTex(latex, display), latex);
+  }
+  const examples = [
+    ["{x | x > 0, x < 1}", String.raw`\left \lbrace x \mid x > 0 , x < 1 \right \rbrace`],
+    ["{x | x > 0,}", String.raw`\left \lbrace x \mid x > 0 , \right \rbrace`],
+    ["{x | x > 0}", String.raw`\left \lbrace x \mid x > 0 \right \rbrace`],
+    ["{x | (a,b), [1;2], text(c,d)}", String.raw`\left \lbrace x \mid \left ( a , b \right ) , \left [ \begin{matrix} 1 \\ 2 \end{matrix} \right ] , \text{c,d} \right \rbrace`],
+    ["{x | x in {1,2}, x != 0}", String.raw`\left \lbrace x \mid x \in \left \lbrace 1 , 2 \right \rbrace , x \ne 0 \right \rbrace`],
+    ["{a,b,c}", String.raw`\left \lbrace a , b , c \right \rbrace`],
+    ["|a,b|", String.raw`\left \lvert a , b \right \rvert`],
+  ];
+  for (const [expression, tex] of examples) assert.equal(toTex(expression), tex);
+  const converter = createMathConverter(parseCustomSymbols(String.raw`IR = \mathbb{R}`));
+  assert.equal(converter.toTex("{x | x in IR, x > 0}"), String.raw`\left \lbrace x \mid x \in {\mathbb{R}} , x > 0 \right \rbrace`);
+});
+
 test("tildes remain visible in text labels and survive LaTeX conversion", () => {
   for (const label of ['"~"', "text(~)", "text{~}", "text[~]", "mbox(~)"]) {
     assert.equal(toTex(label), String.raw`\text{\(\textasciitilde\)}`);
