@@ -39,7 +39,9 @@ export function expandVariables(source: string, substitute: (value: string) => s
   function finishLine(): void {
     const definition = line.match(assignment);
     if (definition) {
-      const value = finalAssignment(definition[2]);
+      // Punctuation and spacing between displayed definitions are not values.
+      const value = finalAssignment(definition[2])
+        .replace(/(?:,[\t\r\n ]*(?:(?:qquad|quad)[\t\r\n ]*)*|\.(?=\s*$))\s*$/, "").trim();
       if (value) definitions.set(identifierKey(definition[1]), value);
     }
     result += line;
@@ -64,6 +66,14 @@ export function expandVariables(source: string, substitute: (value: string) => s
         finishLine();
         result += conjunction[0];
         index += conjunction[0].length;
+        continue;
+      }
+      const separator = depth === 0 && assignmentStart.test(line)
+        ? rest.match(/^,\s*(?:(?:qquad|quad)\s+)*/) : null;
+      if (separator && assignmentStart.test(rest.slice(separator[0].length))) {
+        finishLine();
+        result += separator[0];
+        index += separator[0].length;
         continue;
       }
       const call = (index === 0 || !/[\p{L}\p{N}_]/u.test(input[index - 1]))

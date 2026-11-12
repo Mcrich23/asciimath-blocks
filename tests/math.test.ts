@@ -392,3 +392,22 @@ test("exp collects assignments separated by and in the same math expression", ()
     assert.equal(toTex("exp(b)", false, [`a = ${value}`]), "b");
   }
 });
+
+test("exp excludes punctuation and spacing between vector definitions", () => {
+  const entries = ["u_1 = [1;-1;2;0]", "u_2 = [-3;1;-8;2]", "u_3 = [1;-7;1;5]"];
+  for (const separator of [", quad\n", ", qquad\n", ",\n", ", quad ", ", "]) {
+    const definitions = `V := span{u_1, u_2, u_3} " where "\n${entries.join(separator)}.`;
+    for (const display of [false, true]) {
+      assert.equal(toTex("T_1 = 2 exp(u_1)", display, [definitions]),
+        `T_{1} = 2 {${toTex("[1;-1;2;0]")}}`, separator);
+      for (const [index, entry] of entries.entries()) {
+        assert.equal(toTex(`exp(u_${index + 1})`, display, [definitions]),
+          toTex(`exp(u_${index + 1})`, display, [entry]));
+      }
+    }
+  }
+  for (const value of ["1.4", "(a,b)", '"a, quad"', "text(a.)", "{1,2}"]) {
+    assert.equal(toTex("exp(x)", false, [`x = ${value}, quad`]),
+      toTex("exp(x)", false, [`x = ${value}`]));
+  }
+});
