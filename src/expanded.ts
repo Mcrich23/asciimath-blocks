@@ -61,7 +61,7 @@ export function expandVariables(source: string, substitute: (value: string) => s
         continue;
       }
       const conjunction = depth === 0 && assignmentStart.test(line)
-        && /\s/.test(input[index - 1] ?? "") ? rest.match(/^and\s+/) : null;
+        && /\s/.test(input[index - 1] ?? "") ? rest.match(/^(?:and|qquad|quad)\s+/) : null;
       if (conjunction && assignmentStart.test(rest.slice(conjunction[0].length))) {
         finishLine();
         result += conjunction[0];

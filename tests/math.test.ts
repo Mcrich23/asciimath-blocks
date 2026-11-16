@@ -393,6 +393,18 @@ test("exp collects assignments separated by and in the same math expression", ()
   }
 });
 
+test("exp collects matrix definitions separated by spacing", () => {
+  const a = "[[1,2],[0,1]]";
+  const b = "[[2,0],[1,3]]";
+  for (const separator of ["quad", "qquad"]) {
+    const definitions = `A=${a} ${separator} B=${b}`;
+    assert.equal(toTex("exp(B) exp(A)", false, [definitions]), `{${toTex(b)}} {${toTex(a)}}`);
+  }
+  for (const value of ['"quad B=7"', "text(quad B=7)", "{x | x=1 quad B=7}"]) {
+    assert.equal(toTex("exp(B)", false, [`A=${value}`]), "B");
+  }
+});
+
 test("exp excludes punctuation and spacing between vector definitions", () => {
   const entries = ["u_1 = [1;-1;2;0]", "u_2 = [-3;1;-8;2]", "u_3 = [1;-7;1;5]"];
   for (const separator of [", quad\n", ", qquad\n", ",\n", ", quad ", ", "]) {
